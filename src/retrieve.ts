@@ -322,6 +322,18 @@ module Retrieve
             }
         }
 
+        hasSettings(settings:AsyncSettings):bool {
+            return settings && this.settingsList && this.settingsList.indexOf(settings) != -1;
+        }
+
+        isInProgress():bool {
+            return !!(this.currentExecutor);
+        }
+
+        settingsListCount():number {
+            return this.settingsList ? this.settingsList.length : 0;
+        }
+
         execute(settings:AsyncSettings = null):AsyncOperation {
             if (!this.currentExecutor)
                 this.currentExecutor = this.createExecutor(this.createOperationFunction(settings), settings);
@@ -371,23 +383,47 @@ module Retrieve
         }
     }
 
-    export class OperationsRepository {
-        private createMethodsByType:any = {};
+    export interface ExecuteSettings {
+    }
 
-        add(type:string, createOperationFunction: (settings:AsyncSettings) => AsyncOperation) {
-            if (this.createMethodsByType && type && createOperationFunction)
-                this.createMethodsByType[type] = createOperationFunction;
+    interface OperationsRepositoryItem {
+        type:string;
+        createOperationFunction: (settings:AsyncSettings) => AsyncOperation;
+        settings?:ExecuteSettings;
+    }
+
+    export class OperationsRepository {
+        private dictionary:any = {};
+
+        add(type:string, createOperationFunction: (settings:AsyncSettings) => AsyncOperation, settings:ExecuteSettings = null) {
+            if (this.dictionary && type && createOperationFunction) {
+                var item:OperationsRepositoryItem = {
+                    type: type,
+                    createOperationFunction: createOperationFunction,
+                };
+                if (settings)
+                    item.settings = settings;
+                this.dictionary[type] = item;
+            }
         }
 
         remove(type:string) {
-            if (this.createMethodsByType && type)
-                delete this.createMethodsByType[type];
+            if (this.dictionary && type)
+                delete this.dictionary[type];
+        }
+
+        private getItem(type):OperationsRepositoryItem {
+            var item:OperationsRepositoryItem;
+            if (this.dictionary && type)
+                item = this.dictionary[type];
+            return item;
         }
 
         getCreateMethod(type:string):(settings:AsyncSettings) => AsyncOperation {
             var result:(settings:AsyncSettings) => AsyncOperation;
-            if (this.createMethodsByType && type)
-                result = this.createMethodsByType[type];
+            var item:OperationsRepositoryItem = this.getItem(type);
+            if (item && typeof item.createOperationFunction === "function")
+                result = item.createOperationFunction;
             return result;
         }
     }
@@ -399,10 +435,10 @@ module Retrieve
         constructor(private repository:OperationsRepository) {
         }
 
-        getManager(settings:AsyncSettings):AsyncOperationManager {
+        getManager(settings:AsyncSettings, createNewManager:bool = true):AsyncOperationManager {
             var hash = this.hash(settings);
             var manager:AsyncOperationManager = <AsyncOperationManager>this.managers[hash];
-            if (!manager) {
+            if (!manager && createNewManager) {
                 manager = new AsyncOperationManager(this.repository.getCreateMethod(settings.type));
                 this.managers[hash] = manager;
             }
@@ -410,22 +446,28 @@ module Retrieve
         }
 
         addSettings(settings:AsyncSettings) {
-            var manager:AsyncOperationManager = this.getManager(settings);
+            var manager:AsyncOperationManager = this.getManager(settings, true);
             if (manager)
                 manager.addSettings(settings);
         }
 
+        hasSettings(settings:AsyncSettings) {
+            var manager:AsyncOperationManager = this.getManager(settings, false);
+            return settings && manager && manager.hasSettings(settings);
+        }
+
         removeSettings(settings:AsyncSettings) {
-            var manager:AsyncOperationManager = this.getManager(settings);
+            var manager:AsyncOperationManager = this.getManager(settings, false);
             if (manager)
                 manager.removeSettings(settings);
+            this.cleanupManager(settings, manager);
         }
 
         execute(settings:AsyncSettings):AsyncOperation {
             var result:AsyncOperation;
-            var factory:AsyncOperationManager = this.getManager(settings);
-            if (factory)
-                result = factory.execute(settings);
+            var manager:AsyncOperationManager = this.getManager(settings, false);
+            if (manager)
+                result = manager.execute(settings);
             return result;
         }
 
@@ -445,6 +487,15 @@ module Retrieve
             }
             return result;
         }
+
+        private cleanupManager(settings:AsyncSettings, manager:AsyncOperationManager = null) {
+            if (!manager)
+                manager = this.getManager(settings, false);
+            if (manager && !manager.isInProgress() && manager.settingsListCount() === 0) {
+                var hash = this.hash(settings);
+                delete this.managers[hash];
+            }
+        }
     }
 
     export interface RetrieveManager {
@@ -455,6 +506,7 @@ module Retrieve
 
         retrieve(type:string, settings:AsyncSettings):AsyncOperation;
         retrieve(settings:AsyncSettings):AsyncOperation;
+        retrieve(type:string):AsyncOperation;
     }
 
     class RetrieveOperationManager implements RetrieveManager {
@@ -501,8 +553,9 @@ module Retrieve
 
         removeAllSettings() {
             if (this.settingsList) {
-                for (var i:number = 0; i < this.settingsList.length; i++) {
-                    this.removeSettings(this.settingsList[i]);
+                var toRemove:AsyncSettings[] = this.settingsList.slice(0);
+                for (var i:number = 0; i < toRemove.length; i++) {
+                    this.removeSettings(toRemove[i]);
                 }
             }
         }
@@ -522,6 +575,7 @@ module Retrieve
 
         retrieve(type:string, settings:AsyncSettings):AsyncOperation;
         retrieve(settings:AsyncSettings):AsyncOperation;
+        retrieve(type:string):AsyncOperation;
         retrieve(typeOrSettings?:any, settings?:AsyncSettings):AsyncOperation {
             return this.execute(typeOrSettings, settings);
         }

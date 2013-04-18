@@ -281,6 +281,15 @@ var Retrieve;
                 }
             }
         };
+        AsyncOperationManager.prototype.hasSettings = function (settings) {
+            return settings && this.settingsList && this.settingsList.indexOf(settings) != -1;
+        };
+        AsyncOperationManager.prototype.isInProgress = function () {
+            return !!(this.currentExecutor);
+        };
+        AsyncOperationManager.prototype.settingsListCount = function () {
+            return this.settingsList ? this.settingsList.length : 0;
+        };
         AsyncOperationManager.prototype.execute = function (settings) {
             if (typeof settings === "undefined") { settings = null; }
             var _this = this;
@@ -331,23 +340,39 @@ var Retrieve;
     Retrieve.AsyncOperationManager = AsyncOperationManager;    
     var OperationsRepository = (function () {
         function OperationsRepository() {
-            this.createMethodsByType = {
+            this.dictionary = {
             };
         }
-        OperationsRepository.prototype.add = function (type, createOperationFunction) {
-            if(this.createMethodsByType && type && createOperationFunction) {
-                this.createMethodsByType[type] = createOperationFunction;
+        OperationsRepository.prototype.add = function (type, createOperationFunction, settings) {
+            if (typeof settings === "undefined") { settings = null; }
+            if(this.dictionary && type && createOperationFunction) {
+                var item = {
+                    type: type,
+                    createOperationFunction: createOperationFunction
+                };
+                if(settings) {
+                    item.settings = settings;
+                }
+                this.dictionary[type] = item;
             }
         };
         OperationsRepository.prototype.remove = function (type) {
-            if(this.createMethodsByType && type) {
-                delete this.createMethodsByType[type];
+            if(this.dictionary && type) {
+                delete this.dictionary[type];
             }
+        };
+        OperationsRepository.prototype.getItem = function (type) {
+            var item;
+            if(this.dictionary && type) {
+                item = this.dictionary[type];
+            }
+            return item;
         };
         OperationsRepository.prototype.getCreateMethod = function (type) {
             var result;
-            if(this.createMethodsByType && type) {
-                result = this.createMethodsByType[type];
+            var item = this.getItem(type);
+            if(item && typeof item.createOperationFunction === "function") {
+                result = item.createOperationFunction;
             }
             return result;
         };
@@ -360,32 +385,38 @@ var Retrieve;
             this.managers = {
             };
         }
-        OperationsManager.prototype.getManager = function (settings) {
+        OperationsManager.prototype.getManager = function (settings, createNewManager) {
+            if (typeof createNewManager === "undefined") { createNewManager = true; }
             var hash = this.hash(settings);
             var manager = this.managers[hash];
-            if(!manager) {
+            if(!manager && createNewManager) {
                 manager = new AsyncOperationManager(this.repository.getCreateMethod(settings.type));
                 this.managers[hash] = manager;
             }
             return manager;
         };
         OperationsManager.prototype.addSettings = function (settings) {
-            var manager = this.getManager(settings);
+            var manager = this.getManager(settings, true);
             if(manager) {
                 manager.addSettings(settings);
             }
         };
+        OperationsManager.prototype.hasSettings = function (settings) {
+            var manager = this.getManager(settings, false);
+            return settings && manager && manager.hasSettings(settings);
+        };
         OperationsManager.prototype.removeSettings = function (settings) {
-            var manager = this.getManager(settings);
+            var manager = this.getManager(settings, false);
             if(manager) {
                 manager.removeSettings(settings);
             }
+            this.cleanupManager(settings, manager);
         };
         OperationsManager.prototype.execute = function (settings) {
             var result;
-            var factory = this.getManager(settings);
-            if(factory) {
-                result = factory.execute(settings);
+            var manager = this.getManager(settings, false);
+            if(manager) {
+                result = manager.execute(settings);
             }
             return result;
         };
@@ -405,6 +436,16 @@ var Retrieve;
                 }
             }
             return result;
+        };
+        OperationsManager.prototype.cleanupManager = function (settings, manager) {
+            if (typeof manager === "undefined") { manager = null; }
+            if(!manager) {
+                manager = this.getManager(settings, false);
+            }
+            if(manager && !manager.isInProgress() && manager.settingsListCount() === 0) {
+                var hash = this.hash(settings);
+                delete this.managers[hash];
+            }
         };
         return OperationsManager;
     })();
@@ -450,8 +491,9 @@ var Retrieve;
         };
         RetrieveOperationManager.prototype.removeAllSettings = function () {
             if(this.settingsList) {
-                for(var i = 0; i < this.settingsList.length; i++) {
-                    this.removeSettings(this.settingsList[i]);
+                var toRemove = this.settingsList.slice(0);
+                for(var i = 0; i < toRemove.length; i++) {
+                    this.removeSettings(toRemove[i]);
                 }
             }
         };
