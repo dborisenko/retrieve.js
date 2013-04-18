@@ -5,21 +5,29 @@ var __extends = this.__extends || function (d, b) {
 };
 var _this = this;
 var TestSettings = (function () {
-    function TestSettings(data, calledCallbacks) {
-        this.data = data;
+    function TestSettings(name, calledCallbacks, type, completeCallback) {
+        if (typeof type === "undefined") { type = null; }
+        if (typeof completeCallback === "undefined") { completeCallback = null; }
+        this.name = name;
         this.calledCallbacks = calledCallbacks;
+        this.type = type;
+        this.completeCallback = completeCallback;
+        this.data = "data";
     }
     TestSettings.prototype.before = function () {
-        this.calledCallbacks.push(this.data + ".before");
+        this.calledCallbacks.push(this.name + ".before");
     };
     TestSettings.prototype.complete = function (data, status) {
-        this.calledCallbacks.push(this.data + ".complete[" + status + "]:" + data);
+        this.calledCallbacks.push(this.name + ".complete[" + status + "]:" + data);
+        if(typeof this.completeCallback === "function") {
+            this.completeCallback(data, status);
+        }
     };
     TestSettings.prototype.success = function (data) {
-        this.calledCallbacks.push(this.data + ".success:" + data);
+        this.calledCallbacks.push(this.name + ".success:" + data);
     };
     TestSettings.prototype.error = function (info) {
-        this.calledCallbacks.push(this.data + ".error:" + info);
+        this.calledCallbacks.push(this.name + ".error:" + info);
     };
     return TestSettings;
 })();
@@ -233,9 +241,113 @@ AsyncTestCase("AsyncOperationManagerTest", {
 });
 AsyncTestCase("RetrieveTest", {
     "testRetrieve": function (queue) {
-        Retrieve.repository.add("testOperation");
-        var retrieve = Retrieve.retriever();
-        retrieve.configure("");
+        var calledCallbacks = [];
+        var operations = [];
+        Retrieve.repository.add("testA", function (settings) {
+            return new TestOperation(Retrieve.CompleteStatus.success, "resultA", 3000);
+        });
+        var sc1 = new TestSettings("1.cfgA1", calledCallbacks);
+        var sc2 = new TestSettings("1.cfgA2", calledCallbacks);
+        var se3 = new TestSettings("1.exeA3", calledCallbacks);
+        var se4 = new TestSettings("1.exeA4", calledCallbacks);
+        var se5 = new TestSettings("1.exeA5", calledCallbacks);
+        var se6 = new TestSettings("1.exeA6", calledCallbacks, "testA");
+        var se7 = new TestSettings("2.exeA7", calledCallbacks);
+        var manager = Retrieve.manager;
+        var retriever1 = Retrieve.retriever();
+        retriever1.configure("testA", sc1);
+        retriever1.configure("testA", sc2);
+        assertTrue(manager.hasSettings(sc1));
+        assertTrue(manager.hasSettings(sc2));
+        queue.call("Step 1. Execute in the first time", function (callbacks) {
+            operations.push(retriever1.retrieve("testA", se3));
+            assertTrue(manager.hasSettings(sc1));
+            assertTrue(manager.hasSettings(sc2));
+            assertFalse(manager.hasSettings(se3));
+            var completeCallback = function (data, status) {
+                setTimeout(callbacks.add(function () {
+                    assertTrue(manager.hasSettings(sc1));
+                    assertTrue(manager.hasSettings(sc2));
+                    assertFalse(manager.hasSettings(se3));
+                    assertFalse(manager.hasSettings(se4));
+                    assertEquals("1.exeA3.before", calledCallbacks[0]);
+                    assertEquals("1.cfgA1.before", calledCallbacks[1]);
+                    assertEquals("1.cfgA2.before", calledCallbacks[2]);
+                    assertEquals("1.exeA4.before", calledCallbacks[3]);
+                    assertEquals("1.exeA3.success:resultA", calledCallbacks[4]);
+                    assertEquals("1.exeA3.complete[success]:resultA", calledCallbacks[5]);
+                    assertEquals("1.cfgA1.success:resultA", calledCallbacks[6]);
+                    assertEquals("1.cfgA1.complete[success]:resultA", calledCallbacks[7]);
+                    assertEquals("1.cfgA2.success:resultA", calledCallbacks[8]);
+                    assertEquals("1.cfgA2.complete[success]:resultA", calledCallbacks[9]);
+                    assertEquals("1.exeA4.success:resultA", calledCallbacks[10]);
+                    assertEquals("1.exeA4.complete[success]:resultA", calledCallbacks[11]);
+                    calledCallbacks.length = 0;
+                }), 1000);
+            };
+            setTimeout(callbacks.add(function () {
+                se4.type = "testA";
+                se4.completeCallback = callbacks.add(completeCallback);
+                operations.push(retriever1.retrieve(se4));
+                assertTrue(manager.hasSettings(sc1));
+                assertTrue(manager.hasSettings(sc2));
+                assertFalse(manager.hasSettings(se3));
+                assertFalse(manager.hasSettings(se4));
+            }), 1000);
+        });
+        queue.call("Step 2. Executing again the same operation", function (callbacks) {
+            operations.push(retriever1.retrieve("testA", se5));
+            assertTrue(manager.hasSettings(sc1));
+            assertTrue(manager.hasSettings(sc2));
+            assertFalse(manager.hasSettings(se5));
+            var completeCallback = function (data, status) {
+                assertTrue(manager.hasSettings(sc1));
+                assertTrue(manager.hasSettings(sc2));
+                assertFalse(manager.hasSettings(se5));
+                assertFalse(manager.hasSettings(se6));
+                assertEquals("1.exeA5.before", calledCallbacks[0]);
+                assertEquals("1.cfgA1.before", calledCallbacks[1]);
+                assertEquals("1.cfgA2.before", calledCallbacks[2]);
+                assertEquals("1.exeA6.before", calledCallbacks[3]);
+                assertEquals("1.exeA5.success:resultA", calledCallbacks[4]);
+                assertEquals("1.exeA5.complete[success]:resultA", calledCallbacks[5]);
+                assertEquals("1.cfgA1.success:resultA", calledCallbacks[6]);
+                assertEquals("1.cfgA1.complete[success]:resultA", calledCallbacks[7]);
+                assertEquals("1.cfgA2.success:resultA", calledCallbacks[8]);
+                assertEquals("1.cfgA2.complete[success]:resultA", calledCallbacks[9]);
+                assertEquals("1.exeA6.success:resultA", calledCallbacks[10]);
+                assertEquals("1.exeA6.complete[success]:resultA", calledCallbacks[11]);
+                calledCallbacks.length = 0;
+            };
+            setTimeout(callbacks.add(function () {
+                se6.completeCallback = callbacks.add(completeCallback);
+                operations.push(retriever1.retrieve(se6));
+                assertTrue(manager.hasSettings(sc1));
+                assertTrue(manager.hasSettings(sc2));
+                assertFalse(manager.hasSettings(se5));
+                assertFalse(manager.hasSettings(se6));
+            }), 1000);
+        });
+        queue.call("Step 3. Executing 2nd retriever and dispose 1st retriever", function (callbacks) {
+            var retriever2 = Retrieve.retriever();
+            se7.completeCallback = callbacks.add(function (data, status) {
+                setTimeout(callbacks.add(function () {
+                    assertFalse(manager.hasSettings(sc1));
+                    assertFalse(manager.hasSettings(sc2));
+                    assertFalse(manager.hasSettings(se7));
+                    assertEquals("2.exeA7.before", calledCallbacks[0]);
+                    assertEquals("1.cfgA1.before", calledCallbacks[1]);
+                    assertEquals("1.cfgA2.before", calledCallbacks[2]);
+                    assertEquals("1.cfgA1.complete[abort]:null", calledCallbacks[3]);
+                    assertEquals("1.cfgA2.complete[abort]:null", calledCallbacks[4]);
+                    assertEquals("2.exeA7.success:resultA", calledCallbacks[5]);
+                    assertEquals("2.exeA7.complete[success]:resultA", calledCallbacks[6]);
+                    calledCallbacks.length = 0;
+                }), 1000);
+            });
+            operations.push(retriever2.retrieve("testA", se7));
+            retriever1.dispose();
+        });
     }
 });
 //@ sourceMappingURL=retrieveTest.js.map
