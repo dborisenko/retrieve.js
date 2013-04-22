@@ -1,5 +1,7 @@
 #!/bin/bash
 
+version=0.1.0
+
 test_bin=test-bin
 test_out=test-reports
 lib=lib
@@ -44,5 +46,4 @@ echo "Compiling library..."
 
 mkdir $lib
 
-tsc src/*.ts src/**/*.ts --declaration --out lib/retrieve.js
-
+tsc src/*.ts src/**/*.ts --declaration --out lib/retrieve-$version.js
