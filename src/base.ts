@@ -1,4 +1,5 @@
-///<reference path='operation/base.ts' />
+///<reference path='async/operation/base.ts' />
+///<reference path='async/invoker/base.ts' />
 
 module Retrieve
 {
