@@ -9,7 +9,7 @@ module Retrieve
      * It's possible to add or remove settings even when operation in progress. If all settings are removed, operation is aborted.
      * Supports timeout.
      */
-    export class AsyncOperationExecutor implements AsyncOperation {
+    export class AsyncOperationExecutor implements AsyncOperation, AsyncMultiOperation {
         beforeSignal:EmptySignal = new Signal();
         completeSignal:CompleteSignal = new Signal();
 
@@ -22,27 +22,26 @@ module Retrieve
         timeout:number = 10000;
 
         constructor(private operation:AsyncOperation, public settings:AsyncSettings) {
-            this.addSettings(settings, false);
+            this.addSettings(settings);
         }
 
-        addSettings(settings:AsyncSettings, withCallback:bool = true) {
+        addSettings(settings:AsyncSettings) {
             this.settingsList = this.settingsList || [];
             if (settings && this.settingsList.indexOf(settings) == -1) {
                 this.settingsList.push(settings);
-                if (withCallback && this.inProgress)
+                if (this.inProgress)
                     this.callBefore(settings);
             }
         }
 
-        removeSettings(settings:AsyncSettings, withCallback:bool = true) {
+        removeSettings(settings:AsyncSettings) {
             if (settings && this.settingsList) {
                 var index:number = this.settingsList.indexOf(settings);
                 if (index != -1)
                     this.settingsList.splice(index, 1);
 
                 if (this.inProgress) {
-                    if (withCallback)
-                        this.callComplete(settings, null, CompleteStatus.abort);
+                    this.callComplete(settings, null, CompleteStatus.abort);
                     if (this.settingsList.length == 0)
                         this.abort();
                 }

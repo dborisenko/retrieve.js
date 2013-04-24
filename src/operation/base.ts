@@ -25,12 +25,28 @@ module Retrieve
     }
 
     export interface AsyncOperation {
+        beforeSignal?:EmptySignal;
         completeSignal?:CompleteSignal;
 
         settings?:AsyncSettings;
 
         abort?();
         execute();
+    }
+
+    export interface AsyncMultiOperation extends AsyncOperation {
+        addSettings(settings:AsyncSettings);
+        removeSettings(settings:AsyncSettings);
+
+        execute(settings?:AsyncSettings);
+    }
+
+    export interface AsyncMultiOperationManager {
+        addSettings(settings:AsyncSettings);
+        removeSettings(settings:AsyncSettings);
+
+        execute?():AsyncOperation;
+        execute?(settings:AsyncSettings):AsyncOperation;
     }
 
     export var CompleteStatus = {

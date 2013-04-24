@@ -32,7 +32,7 @@ module Retrieve
         }
     }
 
-    export class AsyncOperationManager {
+    export class AsyncOperationManager implements AsyncOperation, AsyncMultiOperation, AsyncMultiOperationManager {
         beforeSignal:EmptySignal = new Signal();
         completeSignal:CompleteSignal = new Signal();
 
