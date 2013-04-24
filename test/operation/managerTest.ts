@@ -2,7 +2,7 @@
 
 AsyncTestCase("AsyncOperationManagerTest", {
     "testSettingsCallbacks": (queue:{call(msg:string, callback:(callbacks:any) => void);}) => {
-        var manager:Retrieve.AsyncOperationManager = new Retrieve.AsyncOperationManager((settings:Retrieve.AsyncSettings):Retrieve.AsyncOperation => {
+        var manager:Retrieve.AsyncOperationInvoker = new Retrieve.AsyncOperationInvoker((settings:Retrieve.AsyncSettings):Retrieve.AsyncOperation => {
             return new TestOperation(Retrieve.CompleteStatus.success, "result", 3000);
         });
 
@@ -46,7 +46,7 @@ AsyncTestCase("AsyncOperationManagerTest", {
     },
 
     "testAbort": (queue:{call(msg:string, callback:(callbacks:any) => void);}) => {
-        var manager:Retrieve.AsyncOperationManager = new Retrieve.AsyncOperationManager((settings:Retrieve.AsyncSettings):Retrieve.AsyncOperation => {
+        var manager:Retrieve.AsyncOperationInvoker = new Retrieve.AsyncOperationInvoker((settings:Retrieve.AsyncSettings):Retrieve.AsyncOperation => {
             return new TestOperation(Retrieve.CompleteStatus.success, "result", 8000);
         });
 

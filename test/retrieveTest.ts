@@ -17,7 +17,7 @@ AsyncTestCase("RetrieveTest", {
 
         var se7:TestSettings = new TestSettings("2.exeA7", calledCallbacks);
 
-        var manager:Retrieve.OperationsManager = Retrieve.manager;
+        var manager:Retrieve.AsyncInvoker = Retrieve.manager;
         var retriever1:Retrieve.RetrieveManager = Retrieve.retriever();
         retriever1.configure("testA", sc1);
         retriever1.configure("testA", sc2);
