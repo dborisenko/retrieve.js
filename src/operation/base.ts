@@ -41,12 +41,17 @@ module Retrieve
         execute(settings?:AsyncSettings);
     }
 
-    export interface AsyncMultiOperationManager {
+    export interface AsyncInvoker {
         addSettings(settings:AsyncSettings);
         removeSettings(settings:AsyncSettings);
+        hasSettings(settings:AsyncSettings):bool;
 
-        execute?():AsyncOperation;
-        execute?(settings:AsyncSettings):AsyncOperation;
+        execute?(settings?:AsyncSettings):AsyncOperation;
+    }
+
+    export interface AsyncProcessInvoker extends AsyncInvoker {
+        isInProgress():bool;
+        settingsListCount():number;
     }
 
     export var CompleteStatus = {

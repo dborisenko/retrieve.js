@@ -32,7 +32,7 @@ module Retrieve
         }
     }
 
-    export class AsyncOperationManager implements AsyncOperation, AsyncMultiOperation, AsyncMultiOperationManager {
+    export class AsyncOperationManager implements AsyncOperation, AsyncMultiOperation, AsyncInvoker, AsyncProcessInvoker {
         beforeSignal:EmptySignal = new Signal();
         completeSignal:CompleteSignal = new Signal();
 
@@ -46,9 +46,8 @@ module Retrieve
 
         addSettings(settings:AsyncSettings) {
             this.settingsList = this.settingsList || [];
-            if (settings) {
-                if (this.settingsList.indexOf(settings) == -1)
-                    this.settingsList.push(settings);
+            if (settings && !this.hasSettings(settings)) {
+                this.settingsList.push(settings);
                 if (this.currentExecutor)
                     this.currentExecutor.addSettings(settings);
             }
