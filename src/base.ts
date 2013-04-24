@@ -14,6 +14,9 @@ module Retrieve
         configure(type:string, settings:AsyncSettings):RetrieveOperation;
         configure(settings:AsyncSettings):RetrieveOperation;
 
+        unconfigure(type:string, settings:AsyncSettings);
+        unconfigure(settings:AsyncSettings);
+
         dispose();
 
         retrieve(type:string, settings:AsyncSettings):RetrieveOperation;
