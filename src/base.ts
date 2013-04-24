@@ -10,9 +10,15 @@ module Retrieve
         retrieve(settings?:AsyncSettings);
     }
 
+    export interface RetrieveInvoker extends AsyncInvoker {
+        retrieve(settings?:AsyncSettings):AsyncOperation;
+
+        dispose();
+    }
+
     export interface RetrieveManager {
-        configure(type:string, settings:AsyncSettings):RetrieveOperation;
-        configure(settings:AsyncSettings):RetrieveOperation;
+        configure(type:string, settings:AsyncSettings):RetrieveInvoker;
+        configure(settings:AsyncSettings):RetrieveInvoker;
 
         unconfigure(type:string, settings:AsyncSettings);
         unconfigure(settings:AsyncSettings);

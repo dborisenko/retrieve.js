@@ -1,11 +1,11 @@
-///<reference path='operation/invoker.ts' />
+///<reference path='invoker/invoker.ts' />
 ///<reference path='repository.ts' />
 
 module Retrieve
 {
     export class OperationsManager implements AsyncInvoker {
 
-        private managers:any = {};
+        private invokers:any = {};
 
         constructor(private repository:OperationsRepository) {
         }
@@ -14,10 +14,10 @@ module Retrieve
             var invoker:AsyncInvoker;
             if (settings) {
                 var hash = this.hash(settings);
-                invoker = <AsyncInvoker>this.managers[hash];
+                invoker = <AsyncInvoker>this.invokers[hash];
                 if (!invoker && createNew) {
-                    invoker = new AsyncOperationManager(this.repository.getCreateMethod(settings.type));
-                    this.managers[hash] = invoker;
+                    invoker = new Retrieve.AsyncOperationInvoker(this.repository.getCreateMethod(settings.type));
+                    this.invokers[hash] = invoker;
                 }
             }
             return invoker;
@@ -71,7 +71,7 @@ module Retrieve
                 invoker = <AsyncProcessInvoker>this.getInvoker(settings, false);
             if (invoker && typeof invoker.isInProgress === "function" && !invoker.isInProgress() && typeof invoker.settingsListCount === "function" && invoker.settingsListCount() === 0) {
                 var hash = this.hash(settings);
-                delete this.managers[hash];
+                delete this.invokers[hash];
             }
         }
     }

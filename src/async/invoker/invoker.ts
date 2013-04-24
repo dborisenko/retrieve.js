@@ -1,5 +1,5 @@
 ///<reference path='base.ts' />
-///<reference path='executor.ts' />
+///<reference path='../operation/executor.ts' />
 
 module Retrieve
 {
@@ -32,49 +32,31 @@ module Retrieve
         }
     }
 
-    export class AsyncOperationManager implements AsyncOperation, AsyncMultiOperation, AsyncInvoker, AsyncProcessInvoker {
+    export class AsyncOperationInvoker extends AsyncInvokerBase implements AsyncOperation, AsyncMultiOperation, AsyncInvoker, AsyncProcessInvoker {
         beforeSignal:EmptySignal = new Signal();
         completeSignal:CompleteSignal = new Signal();
 
         private currentExecutor:AsyncOperationExecutor;
         private operationsInProgress:AsyncOperationWrapper[] = [];
 
-        private settingsList:AsyncSettings[] = [];
-
         constructor(private createOperationFunction: (settings:AsyncSettings) => AsyncOperation) {
-        }
-
-        addSettings(settings:AsyncSettings) {
-            this.settingsList = this.settingsList || [];
-            if (settings && !this.hasSettings(settings)) {
-                this.settingsList.push(settings);
-                if (this.currentExecutor)
-                    this.currentExecutor.addSettings(settings);
-            }
-        }
-
-        removeSettings(settings:AsyncSettings) {
-            if (settings) {
-                if (this.settingsList) {
-                    var index:number = this.settingsList.indexOf(settings);
-                    if (index != -1)
-                        this.settingsList.splice(index, 1);
-                }
-                if (this.currentExecutor)
-                    this.currentExecutor.removeSettings(settings);
-            }
-        }
-
-        hasSettings(settings:AsyncSettings):bool {
-            return settings && this.settingsList && this.settingsList.indexOf(settings) != -1;
+            super();
         }
 
         isInProgress():bool {
             return !!(this.currentExecutor);
         }
 
-        settingsListCount():number {
-            return this.settingsList ? this.settingsList.length : 0;
+        addSettings(settings:AsyncSettings) {
+            super.addSettings(settings);
+            if (this.currentExecutor)
+                this.currentExecutor.addSettings(settings);
+        }
+
+        removeSettings(settings:AsyncSettings) {
+            super.removeSettings(settings);
+            if (this.currentExecutor)
+                this.currentExecutor.removeSettings(settings);
         }
 
         execute(settings:AsyncSettings = null):AsyncOperation {
@@ -106,11 +88,9 @@ module Retrieve
 
             var executor:AsyncOperationExecutor = new AsyncOperationExecutor(operation, settings);
 
-            for (var i:number = 0; i < this.settingsList.length; i++) {
-                var settings:AsyncSettings = this.settingsList[i];
-                if (settings)
-                    executor.addSettings(settings);
-            }
+            this.forEachSettings((settings:AsyncSettings) => {
+                executor.addSettings(settings);
+            });
 
             if (executor.completeSignal) {
                 var onComplete = (data:any, status:string) => {

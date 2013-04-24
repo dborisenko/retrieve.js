@@ -1,4 +1,4 @@
-///<reference path='../signal.ts' />
+///<reference path='../../signal.ts' />
 
 module Retrieve
 {
@@ -41,19 +41,6 @@ module Retrieve
         execute(settings?:AsyncSettings);
     }
 
-    export interface AsyncInvoker {
-        addSettings(settings:AsyncSettings);
-        removeSettings(settings:AsyncSettings);
-        hasSettings(settings:AsyncSettings):bool;
-
-        execute?(settings?:AsyncSettings):AsyncOperation;
-    }
-
-    export interface AsyncProcessInvoker extends AsyncInvoker {
-        isInProgress():bool;
-        settingsListCount():number;
-    }
-
     export var CompleteStatus = {
         success: "success",
         error: "error",
@@ -61,7 +48,7 @@ module Retrieve
         abort: "abort"
     };
 
-    export class AsyncOperationBase {
+    export class AsyncOperationBase implements AsyncOperation {
         completeSignal:CompleteSignal = new Signal();
         settings:AsyncSettings;
 
