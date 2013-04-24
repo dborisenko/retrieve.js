@@ -1,48 +1,51 @@
-///<reference path='operation/manager.ts' />
+///<reference path='operation/invoker.ts' />
 ///<reference path='repository.ts' />
 
 module Retrieve
 {
-    export class OperationsManager {
+    export class OperationsManager implements AsyncInvoker {
 
         private managers:any = {};
 
         constructor(private repository:OperationsRepository) {
         }
 
-        getManager(settings:AsyncSettings, createNewManager:bool = true):AsyncOperationManager {
-            var hash = this.hash(settings);
-            var manager:AsyncOperationManager = <AsyncOperationManager>this.managers[hash];
-            if (!manager && createNewManager) {
-                manager = new AsyncOperationManager(this.repository.getCreateMethod(settings.type));
-                this.managers[hash] = manager;
+        getInvoker(settings:AsyncSettings, createNew:bool = true):AsyncInvoker {
+            var invoker:AsyncInvoker;
+            if (settings) {
+                var hash = this.hash(settings);
+                invoker = <AsyncInvoker>this.managers[hash];
+                if (!invoker && createNew) {
+                    invoker = new AsyncOperationManager(this.repository.getCreateMethod(settings.type));
+                    this.managers[hash] = invoker;
+                }
             }
-            return manager;
+            return invoker;
         }
 
         addSettings(settings:AsyncSettings) {
-            var manager:AsyncOperationManager = this.getManager(settings, true);
-            if (manager)
-                manager.addSettings(settings);
+            var invoker:AsyncInvoker = this.getInvoker(settings, true);
+            if (invoker)
+                invoker.addSettings(settings);
         }
 
         hasSettings(settings:AsyncSettings) {
-            var manager:AsyncOperationManager = this.getManager(settings, false);
-            return settings && manager && manager.hasSettings(settings);
+            var invoker:AsyncInvoker = this.getInvoker(settings, false);
+            return settings && invoker && invoker.hasSettings(settings);
         }
 
         removeSettings(settings:AsyncSettings) {
-            var manager:AsyncOperationManager = this.getManager(settings, false);
-            if (manager)
-                manager.removeSettings(settings);
-            this.cleanupManager(settings, manager);
+            var invoker:AsyncInvoker = this.getInvoker(settings, false);
+            if (invoker)
+                invoker.removeSettings(settings);
+            this.cleanupManager(settings, <AsyncProcessInvoker>invoker);
         }
 
-        execute(settings:AsyncSettings):AsyncOperation {
+        execute(settings?:AsyncSettings):AsyncOperation {
             var result:AsyncOperation;
-            var manager:AsyncOperationManager = this.getManager(settings, false);
-            if (manager)
-                result = manager.execute(settings);
+            var invoker:AsyncInvoker = this.getInvoker(settings, false);
+            if (invoker)
+                result = invoker.execute(settings);
             return result;
         }
 
@@ -63,10 +66,10 @@ module Retrieve
             return result;
         }
 
-        private cleanupManager(settings:AsyncSettings, manager:AsyncOperationManager = null) {
-            if (!manager)
-                manager = this.getManager(settings, false);
-            if (manager && !manager.isInProgress() && manager.settingsListCount() === 0) {
+        private cleanupManager(settings:AsyncSettings, invoker:AsyncProcessInvoker = null) {
+            if (!invoker)
+                invoker = <AsyncProcessInvoker>this.getInvoker(settings, false);
+            if (invoker && typeof invoker.isInProgress === "function" && !invoker.isInProgress() && typeof invoker.settingsListCount === "function" && invoker.settingsListCount() === 0) {
                 var hash = this.hash(settings);
                 delete this.managers[hash];
             }
