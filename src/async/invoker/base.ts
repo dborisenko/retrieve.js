@@ -51,5 +51,16 @@ module Retrieve {
                 }
             }
         }
+
+        removeAllSettings() {
+            if (this.settingsList) {
+                var toRemove:AsyncSettings[] = this.settingsList.splice(0);
+                if (toRemove) {
+                    for (var i:number = 0; i < toRemove.length; i++) {
+                        this.removeSettings(toRemove[i]);
+                    }
+                }
+            }
+        }
     }
 }

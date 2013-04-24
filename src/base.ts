@@ -12,7 +12,7 @@ module Retrieve
     }
 
     export interface RetrieveInvoker extends AsyncInvoker {
-        retrieve(settings?:AsyncSettings):AsyncOperation;
+        retrieve(settings?:AsyncSettings):RetrieveOperation;
 
         dispose();
     }

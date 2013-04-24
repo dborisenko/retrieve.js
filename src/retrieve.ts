@@ -1,6 +1,5 @@
-///<reference path='repository.ts' />
-///<reference path='operation/invoker.ts' />
-///<reference path='manager.ts' />
+///<reference path='async/operation/base.ts' />
+///<reference path='async/manager.ts' />
 ///<reference path='base.ts' />
 
 module Retrieve
@@ -14,10 +13,47 @@ module Retrieve
         }
     }
 
-    class RetrieveOperationManager implements RetrieveManager {
-        private settingsList:AsyncSettings[] = [];
+    class RetrieveInvokerWrapper extends AsyncInvokerBase implements RetrieveInvoker {
+        constructor(private manager:RetrieveOperationManager, private settings:AsyncSettings) {
+            super();
+            this.addSettings(settings);
+        }
 
+        validateSettingsType(settings:AsyncSettings) {
+            if (settings)
+                settings.type = this.settings.type;
+        }
+
+        addSettings(settings:AsyncSettings) {
+            this.validateSettingsType(settings);
+            super.addSettings(settings);
+            if (this.manager)
+                this.manager.addSettings(settings);
+        }
+
+        removeSettings(settings:AsyncSettings) {
+            this.validateSettingsType(settings);
+            super.removeSettings(settings);
+            if (this.manager)
+                this.manager.removeSettings(settings);
+        }
+
+        retrieve(settings?:AsyncSettings):RetrieveOperation {
+            var result:RetrieveOperation;
+            this.validateSettingsType(settings);
+            if (this.manager)
+                result = this.manager.retrieve(settings || this.settings);
+            return result;
+        }
+
+        dispose() {
+            this.removeAllSettings();
+        }
+    }
+
+    class RetrieveOperationManager extends AsyncInvokerBase implements RetrieveManager {
         constructor(private manager:OperationsManager) {
+            super();
         }
 
         private prepareSettings(typeOrSettings:any, settings:AsyncSettings):AsyncSettings {
@@ -28,40 +64,39 @@ module Retrieve
             return settings;
         }
 
-        configure(type:string, settings:AsyncSettings):RetrieveOperation;
-        configure(settings:AsyncSettings):RetrieveOperation;
-        configure(typeOrSettings?:any, settings?:AsyncSettings):RetrieveOperation {
-
-            this.settingsList = this.settingsList || [];
-            settings = this.prepareSettings(typeOrSettings, settings);
+        addSettings(settings:AsyncSettings) {
+            super.addSettings(settings);
             if (settings) {
-                if (this.settingsList.indexOf(settings) == -1)
-                    this.settingsList.push(settings);
-                if (this.manager) {
-                    var invoker:AsyncInvoker = manager.getInvoker(settings);
-                }
-                    this.manager.addSettings(settings);
+                var invoker:AsyncInvoker = manager.getInvoker(settings, true);
+                if (invoker)
+                    invoker.addSettings(settings);
             }
+        }
 
-            var invoker:AsyncInvoker = manager.getInvoker(settings, true);
-            if (invoker)
-                invoker.addSettings(settings);
-            return RetrieveConverter.toRetrieveOperation(invoker);
+        removeSettings(settings:AsyncSettings) {
+            super.removeSettings(settings);
+            if (settings) {
+                var invoker:AsyncInvoker = manager.getInvoker(settings, false);
+                if (invoker)
+                    invoker.removeSettings(settings);
+            }
+        }
+
+        configure(type:string, settings:AsyncSettings):RetrieveInvoker;
+        configure(settings:AsyncSettings):RetrieveInvoker;
+        configure(typeOrSettings?:any, settings?:AsyncSettings):RetrieveInvoker {
+            settings = this.prepareSettings(typeOrSettings, settings);
+
+            var invoker:RetrieveInvoker = new RetrieveInvokerWrapper(this, settings);
+            invoker.addSettings(settings);
+            return invoker;
         }
 
         unconfigure(type:string, settings:AsyncSettings);
         unconfigure(settings:AsyncSettings);
         unconfigure(typeOrSettings?:any, settings?:AsyncSettings) {
             settings = this.prepareSettings(typeOrSettings, settings);
-            if (settings) {
-                if (this.settingsList) {
-                    var index:number = this.settingsList.indexOf(settings);
-                    if (index != -1)
-                        this.settingsList.splice(index, 1);
-                }
-                if (this.manager)
-                    this.manager.removeSettings(settings);
-            }
+            this.removeSettings(settings);
         }
 
         retrieve(type:string, settings:AsyncSettings):RetrieveOperation;
@@ -73,12 +108,7 @@ module Retrieve
         }
 
         dispose() {
-            if (this.settingsList) {
-                var toRemove:AsyncSettings[] = this.settingsList.slice(0);
-                for (var i:number = 0; i < toRemove.length; i++) {
-                    this.unconfigure(toRemove[i]);
-                }
-            }
+            this.removeAllSettings();
         }
     }
 
@@ -87,5 +117,11 @@ module Retrieve
 
     export function retriever():RetrieveManager {
         return new RetrieveOperationManager(manager);
+    }
+
+    export function configure(type:string, settings:AsyncSettings):RetrieveInvoker;
+    export function configure(settings:AsyncSettings):RetrieveInvoker;
+    export function configure(typeOrSettings?:any, settings?:AsyncSettings):RetrieveInvoker {
+        return retriever().configure(typeOrSettings, settings);
     }
 }
