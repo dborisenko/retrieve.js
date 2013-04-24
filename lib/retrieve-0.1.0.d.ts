@@ -27,10 +27,16 @@ module Retrieve {
         data?: any;
     }
     interface AsyncOperation {
+        beforeSignal?: EmptySignal;
         completeSignal?: CompleteSignal;
         settings?: AsyncSettings;
         abort? ();
         execute();
+    }
+    interface AsyncMultiOperation extends AsyncOperation {
+        addSettings(settings: AsyncSettings);
+        removeSettings(settings: AsyncSettings);
+        execute(settings?: AsyncSettings);
     }
     var CompleteStatus: {
         success: string;
@@ -38,7 +44,7 @@ module Retrieve {
         timeout: string;
         abort: string;
     };
-    class AsyncOperationBase {
+    class AsyncOperationBase implements AsyncOperation {
         public completeSignal: CompleteSignal;
         public settings: AsyncSettings;
         constructor();
@@ -48,7 +54,50 @@ module Retrieve {
     }
 }
 module Retrieve {
-    class AsyncOperationExecutor implements AsyncOperation {
+    interface AsyncInvoker {
+        addSettings(settings: AsyncSettings);
+        removeSettings(settings: AsyncSettings);
+        hasSettings(settings: AsyncSettings): bool;
+        execute? (settings?: AsyncSettings): AsyncOperation;
+    }
+    interface AsyncProcessInvoker extends AsyncInvoker {
+        isInProgress(): bool;
+        settingsListCount(): number;
+    }
+    class AsyncInvokerBase implements AsyncInvoker {
+        private settingsList;
+        public addSettings(settings: AsyncSettings): void;
+        public removeSettings(settings: AsyncSettings): void;
+        public hasSettings(settings: AsyncSettings): bool;
+        public settingsListCount(): number;
+        public forEachSettings(callback: (settings: AsyncSettings) => void): void;
+        public removeAllSettings(): void;
+    }
+}
+module Retrieve {
+    interface RetrieveOperation extends AsyncOperation {
+        retrieve();
+    }
+    interface RetrieveMultiOperation extends RetrieveOperation, AsyncMultiOperation {
+        retrieve(settings?: AsyncSettings);
+    }
+    interface RetrieveInvoker extends AsyncInvoker {
+        retrieve(settings?: AsyncSettings): RetrieveOperation;
+        dispose();
+    }
+    interface RetrieveManager {
+        configure(type: string, settings: AsyncSettings): RetrieveInvoker;
+        configure(settings: AsyncSettings): RetrieveInvoker;
+        unconfigure(type: string, settings: AsyncSettings);
+        unconfigure(settings: AsyncSettings);
+        dispose();
+        retrieve(type: string, settings: AsyncSettings): RetrieveOperation;
+        retrieve(settings: AsyncSettings): RetrieveOperation;
+        retrieve(type: string): RetrieveOperation;
+    }
+}
+module Retrieve {
+    class AsyncOperationExecutor implements AsyncOperation, AsyncMultiOperation {
         private operation;
         public settings: AsyncSettings;
         public beforeSignal: EmptySignal;
@@ -58,8 +107,8 @@ module Retrieve {
         private timeoutId;
         public timeout: number;
         constructor(operation: AsyncOperation, settings: AsyncSettings);
-        public addSettings(settings: AsyncSettings, withCallback?: bool): void;
-        public removeSettings(settings: AsyncSettings, withCallback?: bool): void;
+        public addSettings(settings: AsyncSettings): void;
+        public removeSettings(settings: AsyncSettings): void;
         public execute(): void;
         public abort(): void;
         private initOperation();
@@ -86,19 +135,16 @@ module Retrieve {
         public abort(): void;
         private onExecutorComplete(data, status);
     }
-    class AsyncOperationManager {
+    class AsyncOperationInvoker extends AsyncInvokerBase implements AsyncOperation, AsyncMultiOperation, AsyncInvoker, AsyncProcessInvoker {
         private createOperationFunction;
         public beforeSignal: EmptySignal;
         public completeSignal: CompleteSignal;
         private currentExecutor;
         private operationsInProgress;
-        private settingsList;
         constructor(createOperationFunction: (settings: AsyncSettings) => AsyncOperation);
+        public isInProgress(): bool;
         public addSettings(settings: AsyncSettings): void;
         public removeSettings(settings: AsyncSettings): void;
-        public hasSettings(settings: AsyncSettings): bool;
-        public isInProgress(): bool;
-        public settingsListCount(): number;
         public execute(settings?: AsyncSettings): AsyncOperation;
         private createExecutor(operation, settings);
     }
@@ -120,29 +166,23 @@ module Retrieve {
     }
 }
 module Retrieve {
-    class OperationsManager {
+    class OperationsManager implements AsyncInvoker {
         private repository;
-        private managers;
+        private invokers;
         constructor(repository: OperationsRepository);
-        public getManager(settings: AsyncSettings, createNewManager?: bool): AsyncOperationManager;
+        public getInvoker(settings: AsyncSettings, createNew?: bool): AsyncInvoker;
         public addSettings(settings: AsyncSettings): void;
         public hasSettings(settings: AsyncSettings): bool;
         public removeSettings(settings: AsyncSettings): void;
-        public execute(settings: AsyncSettings): AsyncOperation;
+        public execute(settings?: AsyncSettings): AsyncOperation;
         public hash(settings: AsyncSettings): string;
-        private cleanupManager(settings, manager?);
+        private cleanupManager(settings, invoker?);
     }
 }
 module Retrieve {
-    interface RetrieveManager {
-        configure(type: string, settings: AsyncSettings);
-        configure(settings: AsyncSettings);
-        dispose();
-        retrieve(type: string, settings: AsyncSettings): AsyncOperation;
-        retrieve(settings: AsyncSettings): AsyncOperation;
-        retrieve(type: string): AsyncOperation;
-    }
     var repository: OperationsRepository;
     var manager: OperationsManager;
     function retriever(): RetrieveManager;
+    function configure(type: string, settings: AsyncSettings): RetrieveInvoker;
+    function configure(settings: AsyncSettings): RetrieveInvoker;
 }
