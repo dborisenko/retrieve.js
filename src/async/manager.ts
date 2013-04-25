@@ -49,23 +49,6 @@ module Retrieve
             return result;
         }
 
-        hash(settings:AsyncSettings):string {
-            var result:string;
-            if (settings) {
-                var type:string = "";
-                if (typeof settings.type !== "undefined")
-                    type = settings.type;
-
-                var data:string = "";
-                if (typeof settings.data !== "undefined")
-                    data = JSON.stringify(settings.data);
-
-                if (type && type !== "" && data && data !== "")
-                    result = type + "/" + data;
-            }
-            return result;
-        }
-
         private cleanupManager(settings:AsyncSettings, invoker:AsyncProcessInvoker = null) {
             if (!invoker)
                 invoker = <AsyncProcessInvoker>this.getInvoker(settings, false);
@@ -73,6 +56,10 @@ module Retrieve
                 var hash = this.hash(settings);
                 delete this.invokers[hash];
             }
+        }
+
+        private hash(settings:AsyncSettings):string {
+            return this.repository.getHash(settings);
         }
     }
 }

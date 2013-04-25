@@ -151,6 +151,7 @@ module Retrieve {
 }
 module Retrieve {
     interface ExecuteSettings {
+        dataHash: (settings: AsyncSettings) => string;
     }
     interface OperationsRepositoryItem {
         type: string;
@@ -163,6 +164,8 @@ module Retrieve {
         public remove(type: string): void;
         private getItem(type);
         public getCreateMethod(type: string): (settings: AsyncSettings) => AsyncOperation;
+        public getHash(settings: AsyncSettings): string;
+        public defaultDataHash(settings: AsyncSettings): string;
     }
 }
 module Retrieve {
@@ -175,8 +178,8 @@ module Retrieve {
         public hasSettings(settings: AsyncSettings): bool;
         public removeSettings(settings: AsyncSettings): void;
         public execute(settings?: AsyncSettings): AsyncOperation;
-        public hash(settings: AsyncSettings): string;
         private cleanupManager(settings, invoker?);
+        private hash(settings);
     }
 }
 module Retrieve {

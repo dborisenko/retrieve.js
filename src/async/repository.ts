@@ -3,6 +3,7 @@
 module Retrieve
 {
     export interface ExecuteSettings {
+        dataHash: (settings:AsyncSettings) => string;
     }
 
     export interface OperationsRepositoryItem {
@@ -43,6 +44,33 @@ module Retrieve
             var item:OperationsRepositoryItem = this.getItem(type);
             if (item && typeof item.createOperationFunction === "function")
                 result = item.createOperationFunction;
+            return result;
+        }
+
+        getHash(settings:AsyncSettings):string {
+            var type:string;
+            var result:string;
+            if (settings) {
+                type = settings.type;
+                var item:OperationsRepositoryItem = this.getItem(type);
+                if (item && item.settings && typeof item.settings.dataHash === "function")
+                    result = item.settings.dataHash(settings);
+                else
+                    result = this.defaultDataHash(settings);
+            }
+            return type + "/" + result;
+        }
+
+        defaultDataHash(settings:AsyncSettings):string {
+            var result:string;
+            if (settings) {
+                var data:string = "";
+                if (typeof settings.data !== "undefined")
+                    data = JSON.stringify(settings.data);
+
+                if (data && data !== "")
+                    result = data;
+            }
             return result;
         }
     }
