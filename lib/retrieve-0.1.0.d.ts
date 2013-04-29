@@ -44,7 +44,15 @@ module Retrieve {
         timeout: string;
         abort: string;
     };
+    class AsyncSettingsBase implements AsyncSettings {
+        public beforeSignal: EmptySignal;
+        public completeSignal: CompleteSignal;
+        constructor();
+        public complete(data: any, status: string): void;
+        public before(): void;
+    }
     class AsyncOperationBase implements AsyncOperation {
+        public beforeSignal: EmptySignal;
         public completeSignal: CompleteSignal;
         public settings: AsyncSettings;
         constructor();
@@ -188,4 +196,52 @@ module Retrieve {
     function retriever(): RetrieveManager;
     function configure(type: string, settings: AsyncSettings): RetrieveInvoker;
     function configure(settings: AsyncSettings): RetrieveInvoker;
+}
+module Backbone {
+    class Model {
+        constructor(attr?, opts?);
+        public get(name: string): any;
+        public set(name: string, val: any): void;
+        public set(obj: any): void;
+        public save(attr?, opts?): void;
+        public destroy(): void;
+        public bind(ev: string, f: Function, ctx?: any): void;
+        public toJSON(): any;
+    }
+    class Collection {
+        constructor(models?, opts?);
+        public bind(ev: string, f: Function, ctx?: any): void;
+        public length: number;
+        public create(attrs, opts?): any;
+        public each(f: (elem: any) => void): void;
+        public fetch(opts?: any): void;
+        public last(): any;
+        public last(n: number): any[];
+        public filter(f: (elem: any) => any): any[];
+        public without(...values: any[]): any[];
+        public reset(models?: any, options?: any);
+    }
+}
+module Retrieve {
+    class BackboneAdapter extends AsyncSettingsBase {
+        private model;
+        private proxiedSettings;
+        public data: any;
+        public type: string;
+        constructor(model: Backbone.Model);
+        constructor(collection: Backbone.Collection);
+        constructor(model: Backbone.Model, type: string);
+        constructor(collection: Backbone.Collection, type: string);
+        constructor(model: Backbone.Model, proxiedSettings: AsyncSettings);
+        constructor(collection: Backbone.Collection, proxiedSettings: AsyncSettings);
+        constructor(model: Backbone.Model, type: string, proxiedSettings: AsyncSettings);
+        constructor(collection: Backbone.Collection, type: string, proxiedSettings: AsyncSettings);
+        constructor(model: Backbone.Model, type: string, data: any, proxiedSettings: AsyncSettings);
+        constructor(collection: Backbone.Collection, type: string, data: any, proxiedSettings: AsyncSettings);
+        private onComplete(data, status);
+        public before(): void;
+        public complete(data: any, status: string): void;
+        public success(data: any): void;
+        public error(info: any): void;
+    }
 }
