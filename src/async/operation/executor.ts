@@ -144,8 +144,12 @@ module Retrieve
         }
 
         private callBefore(settings:AsyncSettings) {
-            if (settings && typeof settings.before === "function")
-                settings.before();
+            if (settings) {
+                if (typeof settings.before === "function")
+                    settings.before();
+                if (settings.beforeSignal && typeof settings.beforeSignal.trigger === "function")
+                    settings.beforeSignal.trigger();
+            }
         }
 
         private callComplete(settings:AsyncSettings, data:any, status:string) {
@@ -157,6 +161,8 @@ module Retrieve
 
                 if (typeof settings.complete === "function")
                     settings.complete(data, status);
+                if (settings.completeSignal && typeof settings.completeSignal.trigger === "function")
+                    settings.completeSignal.trigger(data, status);
             }
         }
     }

@@ -19,6 +19,8 @@ module Retrieve {
         trigger();
     }
     interface AsyncSettings {
+        beforeSignal?: EmptySignal;
+        completeSignal?: CompleteSignal;
         before? ();
         complete? (data: any, status: string);
         success? (data: any);
