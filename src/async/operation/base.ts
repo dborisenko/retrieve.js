@@ -48,7 +48,26 @@ module Retrieve
         abort: "abort"
     };
 
+    export class AsyncSettingsBase implements AsyncSettings {
+        beforeSignal:EmptySignal = new Signal();
+        completeSignal:CompleteSignal = new Signal();
+
+        constructor() {
+        }
+
+        complete(data:any, status:string) {
+            if (this.completeSignal)
+                this.completeSignal.trigger(data, status);
+        }
+
+        before() {
+            if (this.beforeSignal)
+                this.beforeSignal.trigger();
+        }
+    }
+
     export class AsyncOperationBase implements AsyncOperation {
+        beforeSignal:EmptySignal = new Signal();
         completeSignal:CompleteSignal = new Signal();
         settings:AsyncSettings;
 
